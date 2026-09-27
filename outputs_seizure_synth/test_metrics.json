@@ -1,0 +1,48 @@
+{
+ "n_test_windows": 590,
+ "n_test_subjects": 2,
+ "window_accuracy": 0.9796610169491525,
+ "window_balanced_accuracy": 0.9796610169491526,
+ "window_macro_f1": 0.9796551724137931,
+ "per_class": {
+  "Non-seizure": {
+   "precision": 0.9639344262295082,
+   "recall": 0.9966101694915255,
+   "f1-score": 0.98,
+   "support": 295.0
+  },
+  "Seizure": {
+   "precision": 0.9964912280701754,
+   "recall": 0.9627118644067797,
+   "f1-score": 0.9793103448275862,
+   "support": 295.0
+  },
+  "accuracy": 0.9796610169491525,
+  "macro avg": {
+   "precision": 0.9802128271498418,
+   "recall": 0.9796610169491526,
+   "f1-score": 0.9796551724137931,
+   "support": 590.0
+  },
+  "weighted avg": {
+   "precision": 0.9802128271498418,
+   "recall": 0.9796610169491525,
+   "f1-score": 0.9796551724137931,
+   "support": 590.0
+  }
+ },
+ "confusion_matrix": [
+  [
+   294,
+   1
+  ],
+  [
+   11,
+   284
+  ]
+ ],
+ "window_roc_auc": 0.9943809250215455,
+ "per_dataset_accuracy": {
+  "chbmit": 0.9796610169491525
+ }
+}

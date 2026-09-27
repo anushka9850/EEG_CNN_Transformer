@@ -1,0 +1,13 @@
+# Binary seizure detection on CHB-MIT only (Seizure vs Non-seizure).
+# Usage:  python -m eegct all -c configs/seizure_chbmit.yaml
+task: seizure
+paths:
+  cache_dir: data/processed_seizure
+  output_dir: outputs_seizure
+datasets:
+  manifest: {enabled: false}
+  chbmit:
+    enabled: true
+    root: data/raw/chbmit
+    interictal_per_ictal: 1.0
+    max_files_per_subject: 12

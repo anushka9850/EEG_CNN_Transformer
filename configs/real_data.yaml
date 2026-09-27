@@ -1,0 +1,16 @@
+# Real public datasets (download first: see scripts/download_data.sh and README).
+# Usage:  python -m eegct all -c configs/real_data.yaml
+paths:
+  cache_dir: data/processed_real
+  output_dir: outputs_real
+datasets:
+  manifest: {enabled: false}
+  chbmit:       {enabled: true, root: data/raw/chbmit}
+  tuh:          {enabled: true, root: data/raw/tuh_normal}     # needs TUH registration
+  openneuro_ad: {enabled: true, root: data/raw/ds004504}
+  openneuro_pd: {enabled: true, root: data/raw/ds002778}
+  modma:        {enabled: true, root: data/raw/modma}           # needs MODMA registration
+  eegmmidb:     {enabled: true, root: data/raw/eegmmidb, max_subjects: 40}   # extra healthy (free)
+  deap:         {enabled: false, root: data/raw/deap}
+training:
+  epochs: 50

@@ -1,0 +1,35 @@
+13:39:09 INFO loading dataset: manifest
+13:39:14 INFO   processed 10 recordings, 1354 windows
+13:39:17 INFO   processed 20 recordings, 2672 windows
+13:39:30 INFO saved data/processed_seizure_synth/windows_seizure_bipolar_banana.npz: X=(3182, 18, 512), 24 recordings
+13:39:30 INFO class counts: {'Non-seizure': 1591, 'Seizure': 1591}
+13:39:31 INFO windows: train 1994 | val 598 | test 590  (subjects 8/2/2)
+13:39:31 INFO device: cpu
+13:39:31 INFO model parameters: 118,122
+13:39:48 INFO epoch   1  loss 0.6685  val_acc 0.9264  val_macroF1 0.9264  (15.2s)
+13:40:08 INFO epoch   2  loss 0.4243  val_acc 0.9682  val_macroF1 0.9682  (19.4s)
+13:40:25 INFO epoch   3  loss 0.2824  val_acc 0.9783  val_macroF1 0.9783  (17.7s)
+13:40:46 INFO epoch   4  loss 0.2695  val_acc 0.9849  val_macroF1 0.9849  (20.6s)
+13:41:03 INFO epoch   5  loss 0.2471  val_acc 0.9783  val_macroF1 0.9783  (17.3s)
+13:41:18 INFO epoch   6  loss 0.2544  val_acc 0.9783  val_macroF1 0.9783  (15.0s)
+13:41:32 INFO epoch   7  loss 0.2445  val_acc 0.9883  val_macroF1 0.9883  (14.1s)
+13:41:47 INFO epoch   8  loss 0.2352  val_acc 0.9866  val_macroF1 0.9866  (14.6s)
+13:42:02 INFO epoch   9  loss 0.2292  val_acc 0.9900  val_macroF1 0.9900  (14.8s)
+13:42:15 INFO epoch  10  loss 0.2332  val_acc 0.9900  val_macroF1 0.9900  (13.7s)
+13:42:30 INFO epoch  11  loss 0.2319  val_acc 0.9916  val_macroF1 0.9916  (14.4s)
+13:42:45 INFO epoch  12  loss 0.2225  val_acc 0.9883  val_macroF1 0.9883  (14.9s)
+13:43:00 INFO epoch  13  loss 0.2197  val_acc 0.9900  val_macroF1 0.9900  (14.9s)
+13:43:14 INFO epoch  14  loss 0.2228  val_acc 0.9916  val_macroF1 0.9916  (14.2s)
+13:43:28 INFO epoch  15  loss 0.2251  val_acc 0.9916  val_macroF1 0.9916  (14.5s)
+13:43:31 INFO TEST  acc 0.9797 | balanced acc 0.9797 | macro-F1 0.9797
+13:43:31 INFO 
+              precision    recall  f1-score   support
+
+ Non-seizure       0.96      1.00      0.98       295
+     Seizure       1.00      0.96      0.98       295
+
+    accuracy                           0.98       590
+   macro avg       0.98      0.98      0.98       590
+weighted avg       0.98      0.98      0.98       590
+
+13:43:38 INFO XAI figures -> outputs_seizure_synth/xai

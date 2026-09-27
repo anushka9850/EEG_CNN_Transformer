@@ -1,0 +1,7 @@
+# Seizure-detection task on the synthetic CHB-MIT-style recordings (demo).
+task: seizure
+paths:
+  cache_dir: data/processed_seizure_synth
+  output_dir: outputs_seizure_synth
+training:
+  epochs: 15

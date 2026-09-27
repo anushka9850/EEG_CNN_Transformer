@@ -1,0 +1,100 @@
+{
+ "n_test_windows": 1519,
+ "n_test_subjects": 13,
+ "window_accuracy": 0.8393680052666228,
+ "window_balanced_accuracy": 0.8933957553058678,
+ "window_macro_f1": 0.8834996700294863,
+ "per_class": {
+  "Healthy": {
+   "precision": 0.7065868263473054,
+   "recall": 0.7955056179775281,
+   "f1-score": 0.7484143763213531,
+   "support": 445.0
+  },
+  "Epilepsy": {
+   "precision": 0.869281045751634,
+   "recall": 0.7388888888888889,
+   "f1-score": 0.7987987987987988,
+   "support": 540.0
+  },
+  "Alzheimer": {
+   "precision": 0.9831460674157303,
+   "recall": 0.9831460674157303,
+   "f1-score": 0.9831460674157303,
+   "support": 178.0
+  },
+  "Parkinson": {
+   "precision": 0.8325123152709359,
+   "recall": 0.949438202247191,
+   "f1-score": 0.8871391076115486,
+   "support": 178.0
+  },
+  "Depression": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1-score": 1.0,
+   "support": 178.0
+  },
+  "accuracy": 0.8393680052666228,
+  "macro avg": {
+   "precision": 0.8783052509571212,
+   "recall": 0.8933957553058678,
+   "f1-score": 0.8834996700294863,
+   "support": 1519.0
+  },
+  "weighted avg": {
+   "precision": 0.845971095818736,
+   "recall": 0.8393680052666228,
+   "f1-score": 0.8395697893148184,
+   "support": 1519.0
+  }
+ },
+ "confusion_matrix": [
+  [
+   354,
+   58,
+   2,
+   31,
+   0
+  ],
+  [
+   141,
+   399,
+   0,
+   0,
+   0
+  ],
+  [
+   0,
+   0,
+   175,
+   3,
+   0
+  ],
+  [
+   6,
+   2,
+   1,
+   169,
+   0
+  ],
+  [
+   0,
+   0,
+   0,
+   0,
+   178
+  ]
+ ],
+ "window_roc_auc_ovr": 0.9609023114665444,
+ "recording_accuracy": 0.9333333333333333,
+ "recording_macro_f1": 0.9377777777777778,
+ "n_test_recordings": 15,
+ "per_dataset_accuracy": {
+  "chbmit": 0.7388888888888889,
+  "modma": 0.8314606741573034,
+  "openneuro_ad": 0.9831460674157303,
+  "openneuro_pd": 0.9662921348314607,
+  "tuh": 0.8277153558052435
+ }
+}

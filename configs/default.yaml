@@ -1,0 +1,108 @@
+# =====================================================================
+#  Unified Explainable CNN-Transformer Framework - main configuration
+# =====================================================================
+
+# Where processed (harmonized + windowed) data and model outputs go
+paths:
+  cache_dir: data/processed        # windows cache (.npz)
+  output_dir: outputs              # checkpoints, metrics, figures
+
+# ---------------------------------------------------------------------
+# Task
+#   multidisease : Healthy / Epilepsy / Alzheimer / Parkinson / Depression
+#   seizure      : CHB-MIT only, Seizure (ictal) vs Non-seizure (interictal)
+# ---------------------------------------------------------------------
+task: multidisease
+classes: [Healthy, Epilepsy, Alzheimer, Parkinson, Depression]
+
+# ---------------------------------------------------------------------
+# Datasets - enable the ones you have downloaded and set their root folder.
+# See README.md -> "Getting the real datasets".
+# ---------------------------------------------------------------------
+datasets:
+  chbmit:        # Epilepsy (CHB-MIT Scalp EEG, PhysioNet / Kaggle mirror)
+    enabled: false
+    root: data/raw/chbmit
+    interictal_per_ictal: 1.0      # interictal windows kept per ictal window
+    max_files_per_subject: 8       # limit for RAM / speed (null = all)
+  tuh:           # Healthy controls (TUH EEG Corpus - normal recordings)
+    enabled: false
+    root: data/raw/tuh_normal
+    label: Healthy
+    max_files: 200
+  openneuro_ad:  # Alzheimer + Healthy (OpenNeuro ds004504)
+    enabled: false
+    root: data/raw/ds004504
+  openneuro_pd:  # Parkinson + Healthy (OpenNeuro ds002778)
+    enabled: false
+    root: data/raw/ds002778
+  modma:         # Depression + Healthy (MODMA 128-ch resting EEG)
+    enabled: false
+    root: data/raw/modma
+    fs: 250
+    labels_file: null              # optional CSV subject,label (MDD/HC); else xlsx in root
+  eegmmidb:      # Extra Healthy controls (PhysioNet EEGMMIDB baseline runs)
+    enabled: false
+    root: data/raw/eegmmidb
+    runs: [1, 2]                   # R01 eyes-open, R02 eyes-closed baseline
+    max_subjects: 109
+  deap:          # Extra Healthy controls (DEAP preprocessed .dat)
+    enabled: false
+    root: data/raw/deap
+  manifest:      # ANY dataset: CSV with columns path,label,subject[,dataset]
+    enabled: true
+    file: data/synthetic/manifest.csv
+
+# ---------------------------------------------------------------------
+# Harmonization
+# ---------------------------------------------------------------------
+harmonization:
+  montage: bipolar_banana          # bipolar_banana (18 ch, matches CHB-MIT) | monopolar_1020 (19 ch)
+  target_fs: 128                   # common sampling rate (Hz)
+
+# ---------------------------------------------------------------------
+# Preprocessing
+# ---------------------------------------------------------------------
+preprocessing:
+  bandpass: [0.5, 45.0]            # Hz
+  notch: [50.0, 60.0]              # removes both EU/IN (50) and US (60) mains
+  ica: false                       # ICA ocular-artifact removal (slow; monopolar data only)
+  ica_components: 15
+  clip_uv: 800.0                   # clip extreme amplitudes (uV) before normalization
+  normalization: robust_zscore     # per-window, per-channel (median / IQR)
+
+# ---------------------------------------------------------------------
+# Window segmentation
+# ---------------------------------------------------------------------
+windows:
+  length_s: 4.0
+  overlap: 0.5                     # fraction (training); 0.0 used for prediction by default
+  max_windows_per_recording: 150   # cap so long recordings don't dominate
+
+# ---------------------------------------------------------------------
+# Model: CNN feature extractor + Transformer encoder
+# ---------------------------------------------------------------------
+model:
+  f1: 8                  # temporal filters
+  f2: 16                 # temporal filters (block 2, Grad-CAM layer)
+  depth_mult: 4          # spatial depthwise multiplier
+  d_model: 64            # transformer width
+  n_heads: 4
+  n_layers: 3
+  ff_dim: 128
+  dropout: 0.25
+
+# ---------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------
+training:
+  seed: 42
+  split: [0.7, 0.15, 0.15]         # subject-wise train / val / test
+  batch_size: 64
+  epochs: 30
+  lr: 0.001
+  weight_decay: 0.01
+  label_smoothing: 0.1
+  patience: 8                      # early stopping on val macro-F1
+  augment: true
+  num_threads: 0                   # 0 = torch default
