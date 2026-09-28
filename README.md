@@ -18,23 +18,63 @@ Classes: **Healthy · Epilepsy · Alzheimer · Parkinson · Depression**
 
 ---
 
-## 1. Quick start (runs end-to-end in ~25 min on a laptop CPU, no downloads)
+## 1. Running the project
+
+Python 3.10 or newer is recommended. The repository includes synthetic EDF recordings and a trained
+checkpoint, so you can run the tests and open the dashboard without downloading real EEG data.
+
+### Windows PowerShell
 
 ```bash
-pip install -r requirements.txt
-
-python -m eegct synth          # 1. writes ~95 realistic synthetic EDF recordings (5 "datasets")
-python -m eegct all            # 2. harmonize + preprocess + window → train → evaluate → XAI figures
-python -m eegct predict data/synthetic/openneuro_ad/openneuro_ad_alz00_00.edf   # 3. diagnose one file
-streamlit run app/streamlit_app.py                                                  # 4. web app
-python -m pytest -q            # unit tests
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pytest -q
+streamlit run app/streamlit_app.py
 ```
 
-> **Important:** the synthetic data exists so that the *software* can be verified without the
-> 100+ GB of real recordings. Its accuracy is **not** a scientific result. For your report, run the
-> same pipeline on the real datasets (Section 3) — it is one command once they are downloaded.
+### macOS / Linux
 
-## 2. Project structure
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pytest -q
+streamlit run app/streamlit_app.py
+```
+
+The dashboard opens at `http://localhost:8501`. It loads `outputs/best_model.pt` by default. To train
+and evaluate a new model instead, run `python -m eegct all`; this uses the configured data and writes
+updated artifacts under `outputs/`.
+
+## 2. Test data and quick checks
+
+`data/synthetic/` contains synthetic, EDF-format test recordings from five dataset layouts, plus
+`manifest.csv` with their reference labels. In the dashboard, select **Bundled test sample**, choose a
+dataset and recording, then analyze it. The reference class is shown for comparison. You can also run
+inference from the command line:
+
+```bash
+python -m eegct predict data/synthetic/openneuro_ad/openneuro_ad_alz00_00.edf --ckpt outputs/best_model.pt
+```
+
+The suite creates small temporary EDF fixtures and does not download external data:
+
+```bash
+python -m pytest -q
+```
+
+To generate a separate, fresh sample set without overwriting the bundled data:
+
+```bash
+python -m eegct synth --out data/test_samples --duration 30 --scale 0.25
+python -m eegct predict data/test_samples/openneuro_ad/openneuro_ad_alz00_00.edf --ckpt outputs/best_model.pt
+```
+
+Synthetic recordings are for software checks only. Their labels and model scores are not clinical or
+scientific evidence. Use the real datasets described below for research results.
+
+## 3. Project structure
 
 ```
 EEG-CNN-Transformer/
@@ -60,7 +100,7 @@ EEG-CNN-Transformer/
 └── outputs/            # created by training: best_model.pt, metrics, figures, xai/
 ```
 
-## 3. Using the real datasets
+## 4. Using the real datasets
 
 | Class | Dataset | Access | Put it in | Label source |
 |---|---|---|---|---|
@@ -91,7 +131,7 @@ stops the model from learning "which dataset is this" instead of "which disease 
 cache. `max_files_per_subject`, `max_files`, `max_subjects` and `max_windows_per_recording` in the
 config cap memory use. A GPU helps but is not required: training uses CUDA automatically when it is available.
 
-## 4. Method details
+## 5. Method details
 
 ### 4.1 Dataset harmonization (`harmonize.py`)
 Each dataset differs in sampling rate (128–512 Hz), channel naming (`EEG FP1-REF`, `Fp1.`, `T3` vs
@@ -144,16 +184,16 @@ models long-range temporal dependencies across the 4 s window.
   shows which time segments the Transformer relied on.
 * Per-class **channel importance** (averaged over test windows) is saved to `outputs/xai/top_channels_per_class.json`.
 
-## 5. Outputs
+## 6. Outputs
 After `python -m eegct all` the `outputs/` folder contains:
 `best_model.pt` (weights + config + class names), `history.json`, `training_curves.png`,
 `test_metrics.json`, `confusion_matrix.png`, `split.npz`, and `xai/gradcam_<Class>_0.png` for every class.
 
-## 6. Results on the synthetic demo data
+## 7. Results on the synthetic demo data
 See `RESULTS.md` (produced by the run included in this package). Real-data results will differ and
 are expected to be lower. Cross-subject, cross-dataset EEG diagnosis is a hard problem.
 
-## 7. Mapping to the project objectives
+## 8. Mapping to the project objectives
 | Objective (slide 7) | Where |
 |---|---|
 | Integrate heterogeneous public EEG datasets | `datasets.py` (7 loaders + manifest) |
@@ -163,7 +203,7 @@ are expected to be lower. Cross-subject, cross-dataset EEG diagnosis is a hard p
 | Classify multiple neurological disorders | 5-class head, `train.py` |
 | Improve interpretability using Grad-CAM | `explain.py`, `app/streamlit_app.py` |
 
-## 8. Limitations
+## 9. Limitations
 * Each disease comes mostly from one dataset, so disease and recording site are partly confounded.
   Harmonization and multi-site healthy controls reduce this but do not remove it. Report the
   per-dataset accuracy and, if possible, validate on an external dataset.

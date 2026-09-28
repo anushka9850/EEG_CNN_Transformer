@@ -43,7 +43,7 @@ def test_chbmit(tmp_path):
         "File Name: chb01_04.edf\nNumber of Seizures in File: 0\n")
     recs = list(load_chbmit({"root": tmp_path / "chbmit"}))
     _check(recs, ["Epilepsy"])
-    assert {r.path.split("/")[-1]: r.seizures for r in recs}["chb01_03.edf"] == [(20, 40)]
+    assert {Path(r.path).name: r.seizures for r in recs}["chb01_03.edf"] == [(20, 40)]
 
 
 def test_tuh(tmp_path):

@@ -16,6 +16,16 @@ from eegct.model import CNNTransformer
 from eegct.preprocess import Recording, bandpass_notch, normalize_windows, recording_to_windows, segment
 
 
+def test_dashboard_loads():
+    from streamlit.testing.v1 import AppTest
+
+    app_path = Path(__file__).resolve().parent.parent / "app" / "streamlit_app.py"
+    app = AppTest.from_file(str(app_path)).run(timeout=30)
+    assert not app.exception
+    assert any(header.value == "Analyze a recording" for header in app.header)
+    assert any(selectbox.label == "Dataset" for selectbox in app.selectbox)
+
+
 def test_canonical_names():
     assert canonical_name("EEG FP1-REF") == "FP1"
     assert canonical_name("Fp1.") == "FP1"
