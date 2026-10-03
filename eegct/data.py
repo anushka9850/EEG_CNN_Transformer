@@ -15,9 +15,14 @@ from .preprocess import recording_to_windows
 
 log = logging.getLogger(__name__)
 
+# Fixed canonical order - absent classes are dropped but the relative order is kept.
+ALL_CLASSES = ["Healthy", "Epilepsy", "Alzheimer", "Parkinson", "Depression"]
+
 
 def class_names(cfg: dict) -> list[str]:
-    return ["Non-seizure", "Seizure"] if cfg["task"] == "seizure" else list(cfg["classes"])
+    if cfg["task"] == "seizure":
+        return ["Non-seizure", "Seizure"]
+    return list(cfg["classes"])
 
 
 def cache_path(cfg: dict) -> Path:
@@ -61,6 +66,15 @@ def build_cache(cfg: dict, force: bool = False) -> Path:
     if skipped:
         log.warning("labels not in class list were dropped: %s", dict(skipped))
     X = np.concatenate(Xs)
+
+    # Dynamic n_classes: keep only classes that actually have windows
+    present_indices = sorted(set(ys))
+    if cfg["task"] != "seizure" and len(present_indices) < len(classes):
+        old2new = {old: new for new, old in enumerate(present_indices)}
+        classes = [classes[i] for i in present_indices]
+        ys = [old2new[y_] for y_ in ys]
+        log.info("dynamic classes (dropped absent): %s", classes)
+
     np.savez_compressed(out, X=X, y=np.array(ys, np.int64), subject=np.array(subs),
                         dataset=np.array(dss), recording=np.array(recs),
                         classes=np.array(classes), channels=np.array(target_channels(cfg["harmonization"]["montage"])),
@@ -93,6 +107,15 @@ def subject_split(y: np.ndarray, subjects: np.ndarray, fractions, seed: int):
         parts[2] += list(ss[:n_te])
         parts[1] += list(ss[n_te:n_te + n_va])
         parts[0] += list(ss[n_te + n_va:])
+
+    # Assert no subject overlap across splits
+    train_subj = set(parts[0])
+    val_subj = set(parts[1])
+    test_subj = set(parts[2])
+    assert not (train_subj & val_subj), "subject overlap: train & val"
+    assert not (train_subj & test_subj), "subject overlap: train & test"
+    assert not (val_subj & test_subj), "subject overlap: val & test"
+
     return [np.where(np.isin(subjects, p))[0] for p in parts]
 
 

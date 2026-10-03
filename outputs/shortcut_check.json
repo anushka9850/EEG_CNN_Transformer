@@ -1,0 +1,13 @@
+{
+ "per_dataset_accuracy": {
+  "chbmit": 0.4740740740740741,
+  "modma": 0.6966292134831461,
+  "openneuro_ad": 0.9831460674157303,
+  "openneuro_pd": 0.9737827715355806,
+  "tuh": 0.9700374531835206
+ },
+ "within_dataset_accuracy": {
+  "openneuro_pd": 0.9737827715355806,
+  "modma": 1.0
+ }
+}

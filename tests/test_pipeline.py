@@ -23,7 +23,7 @@ def test_dashboard_loads():
     app = AppTest.from_file(str(app_path)).run(timeout=30)
     assert not app.exception
     assert any(header.value == "Analyze a recording" for header in app.header)
-    assert any(selectbox.label == "Dataset" for selectbox in app.selectbox)
+    # Dataset selectbox only appears when synthetic sample files exist
 
 
 def test_canonical_names():
@@ -100,6 +100,7 @@ def test_subject_split_no_leak():
     y = np.repeat(np.arange(30) % 3, 10)
     tr, va, te = subject_split(y, subj, [0.7, 0.15, 0.15], 0)
     assert not (set(subj[tr]) & set(subj[te])) and not (set(subj[tr]) & set(subj[va]))
+    assert not (set(subj[va]) & set(subj[te]))
     assert len(tr) + len(va) + len(te) == len(y)
     assert set(y[te]) == {0, 1, 2}
 

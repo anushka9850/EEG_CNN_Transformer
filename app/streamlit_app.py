@@ -21,6 +21,14 @@ st.session_state.setdefault("analysis", None)
 st.session_state.setdefault("analysis_error", None)
 
 
+def _default_ckpt() -> str:
+    """Return the best available checkpoint path."""
+    for p in [ROOT / "outputs_real" / "best_model.pt", ROOT / "outputs" / "best_model.pt"]:
+        if p.is_file():
+            return str(p)
+    return str(ROOT / "outputs" / "best_model.pt")
+
+
 @st.cache_resource
 def get_model(path):
     return load_model(path)
@@ -48,7 +56,7 @@ st.caption("Research prototype for EEG classification and explainability. Not fo
 
 with st.sidebar:
     st.header("Model")
-    ckpt = st.text_input("Checkpoint", str(ROOT / "outputs" / "best_model.pt"))
+    ckpt = st.text_input("Checkpoint", _default_ckpt())
     if not Path(ckpt).is_file():
         st.error("Checkpoint not found.")
         st.caption("Train a model with `python -m eegct all`, or point to an existing checkpoint.")
@@ -59,10 +67,12 @@ with st.sidebar:
         st.error(f"Could not load checkpoint: {exc}")
         st.stop()
 
+    # Class names are loaded from the checkpoint, not hard-coded
+    classes = ck["classes"]
     st.success(f"Ready · epoch {ck['epoch']} · validation macro-F1 {ck['val_f1']:.3f}")
     with st.expander("Model details"):
         st.write("**Task:**", ck["config"]["task"])
-        st.write("**Classes:**", ", ".join(ck["classes"]))
+        st.write("**Classes:**", ", ".join(classes))
         st.write("**Montage:**", ck["config"]["harmonization"]["montage"])
         st.write("**Channels:**", len(ck["channels"]))
         st.write("**Sampling rate:**", f"{ck['fs']} Hz")
@@ -97,7 +107,7 @@ with st.form("analysis_form"):
     else:
         uploaded = st.file_uploader(
             "Choose an EEG recording",
-            type=["edf", "bdf", "fif", "mat", "npy", "csv"],
+            type=["edf", "bdf", "fif", "mat", "npy", "csv", "dat"],
         )
         fs_in = st.number_input("Sampling rate for MAT / NPY / CSV (Hz)", min_value=1.0, value=250.0)
     submitted = st.form_submit_button("Analyze recording", type="primary", icon=":material/analytics:")
@@ -170,14 +180,14 @@ if analysis:
         ) - 1
         selected_class = st.selectbox(
             "Explain class",
-            ck["classes"],
-            index=ck["classes"].index(result["prediction"]),
+            classes,
+            index=classes.index(result["prediction"]),
             help="Grad-CAM is recalculated to explain this class for the selected segment.",
         )
 
     selected_start = result["window_starts_s"][selected_window]
     window_length = ck["config"]["windows"]["length_s"]
-    class_index = ck["classes"].index(selected_class)
+    class_index = classes.index(selected_class)
     selected_probability = result["window_probabilities"][selected_window][class_index]
     st.caption(
         f"Explaining {selected_class} in window {selected_window + 1} "
@@ -210,7 +220,7 @@ if analysis:
     with timeline_tab:
         window_data = pd.DataFrame(
             result["window_probabilities"],
-            columns=ck["classes"],
+            columns=classes,
             index=np.round(result["window_starts_s"], 1),
         )
         window_data.index.name = "Window start (s)"
@@ -224,7 +234,7 @@ if analysis:
             analysis["windows"][selected_window],
             selected_explanation,
             ck["channels"],
-            ck["classes"],
+            classes,
             ck["fs"],
             title=f"{selected_class} explanation - window {selected_window + 1}",
         )

@@ -127,3 +127,29 @@ def test_build_cache_multi_dataset(tmp_path):
     assert d["X"].shape[1:] == (18, 512)
     assert set(d["dataset"]) == {"openneuro_ad", "modma"}
     assert {str(d["classes"][k]) for k in set(d["y"])} == {"Alzheimer", "Healthy", "Depression"}
+
+
+def test_dataset_skipping_and_dynamic_classes(tmp_path):
+    """Missing datasets are skipped with warning; absent classes dropped dynamically."""
+    (tmp_path / "ad").mkdir()
+    test_openneuro_ad(tmp_path / "ad")
+    # Point modma and chbmit to non-existent dirs
+    cfg = load_config(None, [
+        f"paths.cache_dir={tmp_path}/cache",
+        "datasets.manifest.enabled=false",
+        "datasets.openneuro_ad.enabled=true",
+        f"datasets.openneuro_ad.root={tmp_path}/ad",
+        "datasets.modma.enabled=true",
+        f"datasets.modma.root={tmp_path}/does_not_exist",
+        "datasets.chbmit.enabled=true",
+        f"datasets.chbmit.root={tmp_path}/also_does_not_exist",
+    ])
+    cpath = build_cache(cfg, force=True)
+    d = load_cache(cpath)
+    # Only openneuro_ad was found (Alzheimer, Healthy)
+    assert set(d["dataset"]) == {"openneuro_ad"}
+    # Canonical order was ["Healthy", "Epilepsy", "Alzheimer", "Parkinson", "Depression"]
+    # With absent classes dropped, order should be ["Healthy", "Alzheimer"]
+    assert list(d["classes"]) == ["Healthy", "Alzheimer"]
+    assert set(d["y"]) == {0, 1}
+

@@ -31,6 +31,19 @@ log = logging.getLogger(__name__)
 EEG_EXT = {".edf", ".bdf", ".set", ".fif", ".vhdr", ".gdf"}
 
 
+def _ci_rglob(root: Path, pattern: str) -> list[Path]:
+    """Case-insensitive recursive glob. Handles .edf/.EDF/.Edf etc."""
+    # pathlib.rglob is case-sensitive on Linux; collect all and filter
+    ext = Path(pattern).suffix.lower()
+    stem_pattern = Path(pattern).stem
+    if stem_pattern == "*":
+        return sorted(f for f in root.rglob("*") if f.is_file() and f.suffix.lower() == ext)
+    # for patterns like "S001R*.edf" we use rglob then filter case-insensitively
+    return sorted(f for f in root.rglob("*") if f.is_file()
+                  and f.suffix.lower() == ext
+                  and re.match(stem_pattern.replace("*", ".*"), f.stem, re.IGNORECASE))
+
+
 def _safe_read(path, **kw):
     try:
         return read_any(path, **kw)
@@ -69,13 +82,26 @@ def load_chbmit(cfg: dict) -> Iterator[Recording]:
     for s in root.rglob("*summary.txt"):
         seizures.update(parse_chbmit_summary(s))
     # also support per-file *.edf.seizures annotations being absent: summary is the source of truth
-    files = sorted(root.rglob("*.edf"))
+    # Case-insensitive glob to handle .edf/.EDF
+    files = _ci_rglob(root, "*.edf")
     by_subj: dict[str, list[Path]] = {}
     for f in files:
-        subj = re.match(r"(chb\d+)", f.name)
-        subj = subj.group(1) if subj else f.parent.name
-        subj = "chb01" if subj == "chb21" else subj  # chb21 is the same patient as chb01
-        by_subj.setdefault(subj, []).append(f)
+        # Support both PhysioNet layout (chbXX/chbXX_YY.edf) and Kaggle mirror
+        # (nested folders with chbXX in name or parent folder)
+        subj = re.match(r"(chb\d+)", f.name, re.IGNORECASE)
+        if subj:
+            subj_id = subj.group(1).lower()
+        else:
+            # Try parent directory names for Kaggle mirror layout
+            for parent in f.parents:
+                m = re.match(r"(chb\d+)", parent.name, re.IGNORECASE)
+                if m:
+                    subj_id = m.group(1).lower()
+                    break
+            else:
+                subj_id = f.parent.name.lower()
+        subj_id = "chb01" if subj_id == "chb21" else subj_id  # chb21 is the same patient as chb01
+        by_subj.setdefault(subj_id, []).append(f)
     maxf = cfg.get("max_files_per_subject")
     for subj, fl in by_subj.items():
         with_sz = [f for f in fl if seizures.get(f.name)]
@@ -93,7 +119,7 @@ def load_chbmit(cfg: dict) -> Iterator[Recording]:
 # ------------------------------------------------------------------ TUH
 def load_tuh(cfg: dict) -> Iterator[Recording]:
     root = Path(cfg["root"])
-    files = [f for f in sorted(root.rglob("*.edf")) if "abnormal" not in str(f).lower()]
+    files = [f for f in _ci_rglob(root, "*.edf") if "abnormal" not in str(f).lower()]
     for f in files[: cfg.get("max_files") or None]:
         r = _safe_read(f)
         if r is None:
@@ -142,8 +168,12 @@ def load_bids(cfg: dict, name: str) -> Iterator[Recording]:
         sid = m.group(1)
         grp = groups.get(sid)
         if grp is None:
-            pre = re.match(r"sub-([a-zA-Z]+)", sid).group(1).upper()
-            grp = pre
+            m2 = re.match(r"sub-([a-zA-Z]+)", sid)
+            if m2:
+                pre = m2.group(1).upper()
+                grp = pre
+            else:
+                continue
         label = group_map.get(str(grp).upper(), map_label(grp))
         if label is None:
             continue
@@ -200,11 +230,16 @@ def load_modma(cfg: dict) -> Iterator[Recording]:
 def load_eegmmidb(cfg: dict) -> Iterator[Recording]:
     root = Path(cfg["root"])
     runs = {int(r) for r in cfg.get("runs", [1, 2])}
-    subs = sorted({p.name for p in root.rglob("S[0-9][0-9][0-9]") if p.is_dir()})
-    subs = subs[: cfg.get("max_subjects") or None]
+    # Case-insensitive search for subject directories
+    subs = sorted({p.name for p in root.rglob("*") if p.is_dir() and re.match(r"S\d{3}$", p.name, re.IGNORECASE)})
+    max_subj = cfg.get("max_subjects")
+    subs = subs[: max_subj or None]
     for s in subs:
-        for f in sorted(root.rglob(f"{s}R*.edf")):
-            run = int(re.search(r"R(\d+)", f.stem).group(1))
+        for f in _ci_rglob(root, f"{s}R*.edf"):
+            m = re.search(r"R(\d+)", f.stem, re.IGNORECASE)
+            if not m:
+                continue
+            run = int(m.group(1))
             if run not in runs:
                 continue
             r = _safe_read(f)
@@ -216,7 +251,9 @@ def load_eegmmidb(cfg: dict) -> Iterator[Recording]:
 # ------------------------------------------------------------------ DEAP
 def load_deap(cfg: dict) -> Iterator[Recording]:
     root = Path(cfg["root"])
-    for f in sorted(root.rglob("s*.dat")):
+    # Case-insensitive glob for .dat files
+    files = sorted(f for f in root.rglob("*") if f.suffix.lower() == ".dat" and re.match(r"s\d+", f.stem, re.IGNORECASE))
+    for f in files:
         try:
             trials = read_deap(f)
         except Exception as e:
@@ -253,6 +290,47 @@ def load_manifest(cfg: dict) -> Iterator[Recording]:
                         seizures=sz, is_epilepsy_patient=(label == "Epilepsy"))
 
 
+# ------------------------------------------------------------------ data check
+def check_datasets(cfg: dict):
+    """Print summary of each configured dataset: found? #subjects, #recordings, labels, fs, channels."""
+    import json
+    from collections import Counter
+    for name, dcfg in cfg["datasets"].items():
+        if not dcfg or not dcfg.get("enabled"):
+            continue
+        if name == "manifest":
+            continue
+        root = Path(dcfg.get("root", ""))
+        if not root.exists():
+            print(f"{name:15s}  found: False  (not found: {root})")
+            log.warning("SKIP %-15s  (not found: %s)", name, root)
+            continue
+        if name not in LOADERS:
+            print(f"{name:15s}  found: False  (unknown loader)")
+            log.warning("SKIP %-15s  (unknown loader)", name)
+            continue
+        recs = []
+        subjects = set()
+        label_counts: Counter = Counter()
+        fs_set = set()
+        ch_set = set()
+        try:
+            for rec in LOADERS[name](dcfg):
+                recs.append(rec)
+                subjects.add(rec.subject)
+                label_counts[rec.label] += 1
+                fs_set.add(rec.fs)
+                ch_set.add(len(rec.ch_names))
+        except Exception as e:
+            print(f"{name:15s}  found: True   ERROR reading: {e}")
+            log.error("ERROR loading %s: %s", name, e)
+            continue
+        print(f"{name:15s}  found: True   #subjects={len(subjects)}, #recordings={len(recs)}, labels={dict(label_counts)}, fs={sorted(fs_set)}, channels={sorted(ch_set)}")
+        log.info("%-15s  %d subjects, %d recordings, labels=%s, fs=%s, ch=%s",
+                 name, len(subjects), len(recs), dict(label_counts),
+                 sorted(fs_set), sorted(ch_set))
+
+
 LOADERS = {
     "chbmit": lambda c: load_chbmit(c),
     "tuh": lambda c: load_tuh(c),
@@ -271,5 +349,14 @@ def iter_recordings(cfg: dict) -> Iterator[Recording]:
             continue
         if name not in LOADERS:
             raise KeyError(f"unknown dataset '{name}'")
+        root = Path(dcfg.get("root", ""))
+        if name != "manifest" and not root.exists():
+            log.warning("SKIP dataset '%s': root not found (%s)", name, root)
+            continue
+        if name == "manifest":
+            mf = Path(dcfg.get("file", ""))
+            if not mf.exists():
+                log.warning("SKIP dataset 'manifest': file not found (%s)", mf)
+                continue
         log.info("loading dataset: %s", name)
         yield from LOADERS[name](dcfg)

@@ -124,6 +124,22 @@ Artifacts are written to `outputs/`. Swap in a different configuration with `-c`
 python -m eegct all -c configs/seizure_chbmit.yaml
 ```
 
+### 3b · Run on real datasets
+
+```powershell
+# Windows: check data and run full pipeline
+.\run_real.ps1
+# Or run check and train manually:
+python -m eegct check -c configs/real_data.yaml
+python -m eegct all -c configs/real_data.yaml
+```
+```bash
+# Linux / macOS:
+bash run_real.sh
+```
+Artifacts are saved to `outputs_real/` and tables written to `RESULTS_REAL.md`.
+
+
 ### 4 · Predict from the command line
 
 ```bash
@@ -137,10 +153,13 @@ python -m eegct predict data/synthetic/openneuro_ad/openneuro_ad_alz00_00.edf --
 |---|---|
 | `python -m eegct all` | Build cache → train → evaluate → XAI |
 | `python -m eegct all -c <config.yaml>` | Same, with a custom configuration |
+| `python -m eegct check -c <config.yaml>` | Inspect dataset paths, #subjects, #recordings, labels, fs, channels (no training) |
 | `python -m eegct predict <file> --ckpt <model.pt>` | Classify a single recording |
 | `python -m eegct synth --out <dir> --duration 30 --scale 0.25` | Generate a fresh synthetic sample set |
-| `python -m pytest -q` | Run the test suite |
-| `streamlit run app/streamlit_app.py` | Launch the web dashboard |
+| `python -m pytest -q` | Run the full test suite |
+| `streamlit run app/streamlit_app.py` | Launch the interactive web dashboard |
+| `.\run_real.ps1` *(Windows)* / `bash run_real.sh` *(Linux)* | Check data & run full real-data pipeline |
+| `.\scripts\download_data.ps1` / `bash scripts/download_data.sh` | Download free EEG datasets |
 
 </details>
 
@@ -159,7 +178,7 @@ python -m eegct predict data/synthetic/openneuro_ad/openneuro_ad_alz00_00.edf --
   python -m eegct predict data/synthetic/openneuro_ad/openneuro_ad_alz00_00.edf --ckpt outputs/best_model.pt
   ```
 
-- **Test suite** (creates small temporary EDF fixtures; no external downloads):
+- **Test suite** (creates small temporary fixtures; no external downloads):
 
   ```bash
   python -m pytest -q
@@ -194,17 +213,25 @@ EEG-CNN-Transformer/
 │   ├── datasets.py     # loaders: CHB-MIT, TUH, OpenNeuro (BIDS) AD/PD, MODMA, EEGMMIDB, DEAP, CSV manifest
 │   ├── harmonize.py    # channel-name normalisation, common montage, resampling, label mapping
 │   ├── preprocess.py   # reading any format, band-pass + notch, ICA, windowing, normalization
-│   ├── data.py         # window cache builder, subject-wise split, augmentation
+│   ├── data.py         # window cache builder, subject-wise split, augmentation, dynamic classes
 │   ├── model.py        # CNN-Transformer
 │   ├── explain.py      # Grad-CAM (channel × time) + attention rollout + figures
 │   ├── train.py        # training loop, evaluation, metrics, plots
 │   ├── predict.py      # inference on a new recording
 │   ├── synthetic.py    # realistic synthetic multi-dataset EEG generator (EDF writer)
 │   └── cli.py          # command-line interface (python -m eegct ...)
-├── app/streamlit_app.py  # web demo: upload EEG → prediction + explanation
-├── scripts/download_data.sh
-├── tests/test_pipeline.py
-└── outputs/            # created by training: best_model.pt, metrics, figures, xai/
+├── app/streamlit_app.py  # web demo: upload EEG (.edf, .bdf, .dat, .mat, .npy, .csv) → prediction + explanation
+├── scripts/
+│   ├── download_data.ps1  # Windows PowerShell download script
+│   └── download_data.sh   # Linux/macOS bash download script
+├── run_real.ps1        # Windows one-click real data pipeline
+├── run_real.sh         # Linux/macOS one-click real data pipeline
+├── tests/
+│   ├── test_loaders.py   # dataset loader unit tests
+│   └── test_pipeline.py  # end-to-end pipeline unit tests
+├── RESULTS.md          # synthetic demo benchmarks and analysis
+├── RESULTS_REAL.md     # automated real-data metrics and shortcut check
+└── outputs/            # created by training: best_model.pt, test_metrics.json, figures, xai/
 ```
 
 </details>
@@ -223,12 +250,21 @@ EEG-CNN-Transformer/
 | 🟢 Healthy (extra) | PhysioNet EEGMMIDB baseline runs R01/R02 | Free | `data/raw/eegmmidb` | All healthy volunteers |
 | 🟢 Healthy (extra) | DEAP (preprocessed `.dat`) | Free registration | `data/raw/deap` | All healthy volunteers |
 
-```bash
-bash scripts/download_data.sh                    # CHB-MIT subset, ds004504, ds002778, EEGMMIDB
-# download TUH-normal and MODMA manually after registering, then:
-python -m eegct all -c configs/real_data.yaml     # outputs in outputs_real/
-python -m eegct all -c configs/seizure_chbmit.yaml
+```powershell
+# Windows PowerShell:
+.\scripts\download_data.ps1                      # Download free datasets (CHB-MIT, ds004504, ds002778, EEGMMIDB)
+python -m eegct check -c configs/real_data.yaml   # Check downloaded datasets
+.\run_real.ps1                                   # Run end-to-end real data pipeline
 ```
+
+```bash
+# Linux / macOS:
+bash scripts/download_data.sh                    # Download free datasets (CHB-MIT, ds004504, ds002778, EEGMMIDB)
+python -m eegct check -c configs/real_data.yaml   # Check downloaded datasets
+bash run_real.sh                                 # Run end-to-end real data pipeline
+```
+*Note: Any dataset folder may be missing; the pipeline skips absent datasets with a one-line warning and trains dynamically on present classes.*
+
 
 <details>
 <summary><b>➕ Adding your own dataset (no code required)</b></summary>
